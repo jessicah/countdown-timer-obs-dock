@@ -87,10 +87,7 @@ void CountdownTimerDock::CreateLayout()
 
     setLayout(layout);
 
-    // Create the timer (100 ms tick)
     tickTimer = new QTimer(this);
-    tickTimer->setInterval(100);
-    tickTimer->setSingleShot(false);
 
     // Connect timer timeout to a handler
     connect(tickTimer, &QTimer::timeout, this, &CountdownTimerDock::OnTick);
@@ -105,7 +102,7 @@ void CountdownTimerDock::CreateLayout()
         }
 
         if (!tickTimer->isActive()) {
-            tickTimer->start(); // interval already set to 100 ms
+            tickTimer->start(100);
             obs_log(LOG_INFO, "Countdown timer started (100 ms tick)");
             this->startStopCountdown->setText(tr("Stop Countdown"));
             this->startStopCountdown->setChecked(true);
