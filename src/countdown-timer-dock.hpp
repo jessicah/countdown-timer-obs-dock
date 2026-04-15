@@ -76,7 +76,6 @@ private:
     QComboBox *sourceScene = nullptr;
     QComboBox *targetScene = nullptr;
 
-    QPushButton *updateCountdown = nullptr;
     QPushButton *switchScene = nullptr;
     QPushButton *startStopCountdown = nullptr;
 

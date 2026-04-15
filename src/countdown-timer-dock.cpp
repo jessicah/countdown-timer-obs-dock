@@ -51,11 +51,8 @@ void CountdownTimerDock::CreateLayout()
     */
     layout = new QVBoxLayout();
 
-    QHBoxLayout *startStopLayout = new QHBoxLayout();
-
     QGridLayout *gridLayout = new QGridLayout();
 
-    updateCountdown = new QPushButton(tr("Update Countdown"));
     switchScene = new QPushButton(tr("Switch to Countdown Scene"));
     startStopCountdown = new QPushButton(tr("Start Countdown"));
 
@@ -80,10 +77,10 @@ void CountdownTimerDock::CreateLayout()
     gridLayout->addWidget(targetScene, 3, 1);
 
     layout->addLayout(gridLayout);
-    layout->addWidget(updateCountdown);
     layout->addWidget(switchScene);
-    startStopLayout->addWidget(startStopCountdown);
-    layout->addLayout(startStopLayout);
+    layout->addWidget(startStopCountdown);
+
+    layout->addStretch();
 
     setLayout(layout);
 
