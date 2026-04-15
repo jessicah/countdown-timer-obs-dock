@@ -117,6 +117,23 @@ void CountdownTimerDock::CreateLayout()
         }
     });
 
+    connect(switchScene, &QPushButton::clicked, this, [this]() {
+        // Get the selected target text source name
+        const QString scene = sourceScene->currentText();
+        if (scene.isEmpty())
+            return;
+
+        const QByteArray sceneBa = scene.toUtf8();
+        obs_source_t *sceneSrc = obs_get_source_by_name(sceneBa.constData());
+        if (sceneSrc) {
+            obs_frontend_set_current_scene(sceneSrc);
+            obs_log(LOG_INFO, "Switched to countdown scene '%s' as configured", sceneBa.constData());
+            obs_source_release(sceneSrc);
+        } else {
+            obs_log(LOG_WARNING, "CountdownTimerDock::OnTick: could not find countdown scene '%s'", sceneBa.constData());
+        }
+    });
+
     validationTimer = new QTimer(this);
     validationTimer->start(1000);
 
