@@ -41,9 +41,12 @@ bool obs_module_load(void)
             LIBOBS_API_PATCH_VER, obs_get_version_string());
     obs_log(LOG_INFO, "Qt version: %s (compiled), %s (runtime)", QT_VERSION_STR, qVersion());
 
-	return true;
+    CountdownTimerDock::Create();
+
+    return true;
 }
 
 void obs_module_unload(void)
 {
+    // TODO: probably delete the dock...
 }

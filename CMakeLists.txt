@@ -37,6 +37,8 @@ endif()
 target_sources(
   ${CMAKE_PROJECT_NAME}
   PRIVATE
-    src/plugin-main.cpp)
+    src/plugin-main.cpp
+    src/countdown-timer-dock.cpp
+    src/countdown-timer-dock.hpp)
 
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})
