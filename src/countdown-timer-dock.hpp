@@ -32,9 +32,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 
 #include <plugin-support.h>
 
-
 typedef bool (*SourcesCallback)(void *param, obs_source_t *source);
-
 
 class CountdownTimerDock : public QWidget {
     Q_OBJECT

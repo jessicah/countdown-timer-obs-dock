@@ -25,7 +25,6 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include <QByteArray>
 #include <QLatin1StringView>
 
-
 void CountdownTimerDock::Create()
 {
     QMainWindow *main = static_cast<QMainWindow *>(obs_frontend_get_main_window());
@@ -37,8 +36,7 @@ void CountdownTimerDock::Create()
     obs_frontend_add_save_callback(CountdownTimerDock::SaveCountdownTimer, dock);
 }
 
-CountdownTimerDock::CountdownTimerDock(QWidget *parent)
-    : QWidget(parent)
+CountdownTimerDock::CountdownTimerDock(QWidget *parent) : QWidget(parent)
 {
     CreateLayout();
 }
@@ -90,8 +88,7 @@ void CountdownTimerDock::CreateLayout()
 
     // Start button: start the timer with 100 ms interval
     connect(startStopCountdown, &QPushButton::clicked, this, [this]() {
-        if (IsValidStartTime() == false)
-        {
+        if (IsValidStartTime() == false) {
             this->startStopCountdown->setChecked(false);
             obs_log(LOG_INFO, "Countdown timer start is in the past, skipping...");
             return;
@@ -123,7 +120,8 @@ void CountdownTimerDock::CreateLayout()
             obs_log(LOG_INFO, "Switched to countdown scene '%s' as configured", sceneBa.constData());
             obs_source_release(sceneSrc);
         } else {
-            obs_log(LOG_WARNING, "CountdownTimerDock::OnTick: could not find countdown scene '%s'", sceneBa.constData());
+            obs_log(LOG_WARNING, "CountdownTimerDock::OnTick: could not find countdown scene '%s'",
+                    sceneBa.constData());
         }
     });
 
@@ -196,15 +194,15 @@ void CountdownTimerDock::OnTick()
 
     // Format remaining time. Show "H:MM:SS.t" if hours > 0, otherwise "MM:SS.t"
     int totalSeconds = msRemaining / 1000;
-    #if 0
+#if 0
     int tenths = (msRemaining % 1000) / 100;
-    #endif
+#endif
     int hours = totalSeconds / 3600;
     int minutes = (totalSeconds % 3600) / 60;
     int seconds = totalSeconds % 60;
 
     QString text;
-    #if 0
+#if 0
     if (hours > 0) {
         text = QString("%1:%2:%3.%4")
                    .arg(hours)
@@ -217,13 +215,13 @@ void CountdownTimerDock::OnTick()
                    .arg(seconds, 2, 10, QChar('0'))
                    .arg(tenths);
     }
-    #else
+#else
     if (hours > 0) {
         text = QString("%1:%2:%3").arg(hours).arg(minutes, 2, 10, QChar('0')).arg(seconds, 2, 10, QChar('0'));
     } else {
         text = QString("%1:%2").arg(minutes, 2, 10, QChar('0')).arg(seconds, 2, 10, QChar('0'));
     }
-    #endif
+#endif
 
     // Update OBS text source setting named "text" with the formatted remaining time.
     const QByteArray textBa = text.toUtf8();
@@ -281,12 +279,11 @@ void CountdownTimerDock::SceneChangeEvent(enum obs_frontend_event event, void *d
     }
 }
 
-void CountdownTimerDock::SaveCountdownTimer(obs_data_t* save_data, bool saving, void *data)
+void CountdownTimerDock::SaveCountdownTimer(obs_data_t *save_data, bool saving, void *data)
 {
     CountdownTimerDock *dock = static_cast<CountdownTimerDock *>(data);
 
-    if (saving)
-    {
+    if (saving) {
         obs_log(LOG_INFO, "Saving countdown timer configuration");
 
         OBSDataAutoRelease obj = obs_data_create();
@@ -298,9 +295,7 @@ void CountdownTimerDock::SaveCountdownTimer(obs_data_t* save_data, bool saving, 
                             dock->timeEdit->time().toString("hh:mm:ss ap").toStdString().c_str());
 
         obs_data_set_obj(save_data, "countdown-timer-dock", obj);
-    }
-    else
-    {
+    } else {
         obs_log(LOG_INFO, "Loading countdown timer configuration");
 
         OBSDataAutoRelease obj = obs_data_get_obj(save_data, "countdown-timer-dock");
@@ -317,7 +312,8 @@ void CountdownTimerDock::SaveCountdownTimer(obs_data_t* save_data, bool saving, 
         dock->targetSceneName = obs_data_get_string(obj, "targetScene");
         dock->targetTransitionTime = obs_data_get_string(obj, "targetTransitionTime");
 
-        obs_log(LOG_INFO, "Loaded countdown timer configuration: targetTextSource=%s, sourceScene=%s, targetScene=%s, targetTransitionTime=%s",
+        obs_log(LOG_INFO,
+                "Loaded countdown timer configuration: targetTextSource=%s, sourceScene=%s, targetScene=%s, targetTransitionTime=%s",
                 dock->targetTextSourceName ? dock->targetTextSourceName : "null",
                 dock->sourceSceneName ? dock->sourceSceneName : "null",
                 dock->targetSceneName ? dock->targetSceneName : "null",
@@ -329,8 +325,7 @@ void CountdownTimerDock::SaveCountdownTimer(obs_data_t* save_data, bool saving, 
 
         QTime transitionTime = QTime::fromString(dock->targetTransitionTime, "hh:mm:ss ap");
 
-        if (transitionTime.isValid())
-        {
+        if (transitionTime.isValid()) {
             dock->timeEdit->setTime(transitionTime);
         }
     }
