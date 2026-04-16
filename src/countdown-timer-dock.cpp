@@ -19,7 +19,6 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include "moc_countdown-timer-dock.cpp"
 #include "countdown-timer-dock.hpp"
 
-#include <obs-frontend-api.h>
 #include <obs-module.h>
 
 #include <QMainWindow>
@@ -147,7 +146,7 @@ void CountdownTimerDock::OnValidationTick()
     startStopCountdown->setEnabled(IsValidStartTime());
 }
 
-void CountdownTimerDock::OnTimeChanged(QTime time)
+void CountdownTimerDock::OnTimeChanged(QTime)
 {
     startStopCountdown->setEnabled(IsValidStartTime());
 }
@@ -197,7 +196,9 @@ void CountdownTimerDock::OnTick()
 
     // Format remaining time. Show "H:MM:SS.t" if hours > 0, otherwise "MM:SS.t"
     int totalSeconds = msRemaining / 1000;
+    #if 0
     int tenths = (msRemaining % 1000) / 100;
+    #endif
     int hours = totalSeconds / 3600;
     int minutes = (totalSeconds % 3600) / 60;
     int seconds = totalSeconds % 60;
