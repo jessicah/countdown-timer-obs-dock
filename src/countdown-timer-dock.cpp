@@ -24,6 +24,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include <QMainWindow>
 #include <QByteArray>
 #include <QLatin1StringView>
+#include <QList>
 
 void CountdownTimerDock::Create()
 {
@@ -81,7 +82,24 @@ void CountdownTimerDock::CreateLayout()
 
     setLayout(layout);
 
-    tickTimer = new QTimer(this);
+    tickTimer = new QTimer(this);    
+
+    // Save settings whenever the user changes the selected text source or target/source scene
+    connect(targetTextSource, &QComboBox::activated, this, [this]() {
+        this->targetTextSourceName = targetTextSource->currentText().toUtf8().constData();
+        this->SaveSettings();
+        }
+);
+    connect(sourceScene, &QComboBox::activated, this, [this]() { this->sourceSceneName = sourceScene->currentText().toUtf8().constData();
+        this->SaveSettings();
+        });
+    connect(targetScene, &QComboBox::activated, this, [this]() { this->targetSceneName = targetScene->currentText().toUtf8().constData();
+        this->SaveSettings();
+        }   );
+    connect(timeEdit, &QTimeEdit::userTimeChanged, this, [this](QTime) {
+        this->targetTransitionTime = timeEdit->time().toString("hh:mm:ss").toUtf8().constData();
+        this->SaveSettings();
+    });
 
     // Connect timer timeout to a handler
     connect(tickTimer, &QTimer::timeout, this, &CountdownTimerDock::OnTick);
@@ -237,26 +255,81 @@ void CountdownTimerDock::OnTick()
     obs_source_release(src);
 }
 
-void CountdownTimerDock::ClearSceneList()
+void CountdownTimerDock::UpdateScenesAndSources()
 {
-    sourceScene->clear();
-    targetScene->clear();
-}
+    QList<obs_source_t *> scenes;
+    QList<obs_source_t *> sources;
 
-void CountdownTimerDock::ClearSourceList()
-{
-    targetTextSource->clear();
-}
+    obs_enum_sources(
+            [](void *param, obs_source_t *source) {
+                QList<obs_source_t *> *sources = static_cast<QList<obs_source_t *> *>(param);
+                sources->append(source);
+                return true;
+            },
+            &sources);
 
-void CountdownTimerDock::AddScene(const char *name)
-{
-    sourceScene->addItem(name);
-    targetScene->addItem(name);
-}
+    obs_enum_scenes(
+            [](void *param, obs_source_t *source) {
+                QList<obs_source_t *> *scenes = static_cast<QList<obs_source_t *> *>(param);
+                scenes->append(source);
+                return true;
+            },
+            &scenes);
 
-void CountdownTimerDock::AddSource(const char *name)
-{
-    targetTextSource->addItem(name);
+    for (int ix = 0; ix < this->sourceScene->count(); ix++) {
+        const QString sceneName = this->sourceScene->itemText(ix);
+        bool sceneExists = std::any_of(scenes.begin(), scenes.end(), [&sceneName](obs_source_t *scene) {
+            return sceneName == obs_source_get_name(scene);
+        });
+        if (!sceneExists) {
+            obs_log(LOG_INFO, "Scene '%s' no longer exists, removing from combo boxes", sceneName.toUtf8().constData());
+            this->sourceScene->removeItem(ix);
+            this->targetScene->removeItem(ix);
+            ix--;
+        }
+    }
+
+    for (int ix = 0; ix < this->targetTextSource->count(); ix++) {
+        const QString sourceName = this->targetTextSource->itemText(ix);
+        bool sourceExists = std::any_of(sources.begin(), sources.end(), [&sourceName](obs_source_t *source) {
+            return sourceName == obs_source_get_name(source);
+        });
+        if (!sourceExists) {
+            obs_log(LOG_INFO, "Source '%s' no longer exists, removing from combo box", sourceName.toUtf8().constData());
+            this->targetTextSource->removeItem(ix);
+            ix--;
+        }
+    }
+
+    for (obs_source_t *scene : scenes) {
+        const QString sceneName = obs_source_get_name(scene);
+        if (this->sourceScene->findText(sceneName) == -1) {
+            obs_log(LOG_INFO, "Scene '%s' exists but is not in combo boxes, adding it", sceneName.toUtf8().constData());
+            this->sourceScene->addItem(sceneName);
+            this->targetScene->addItem(sceneName);
+        }
+    }
+
+    for (obs_source_t *source : sources) {
+        const QString sourceName = obs_source_get_name(source);
+        if (QLatin1StringView(obs_source_get_id(source)).contains(QLatin1StringView("text"))) {
+            if (this->targetTextSource->findText(sourceName) == -1) {
+                obs_log(LOG_INFO, "Source '%s' exists but is not in combo box, adding it",
+                        sourceName.toUtf8().constData());
+                this->targetTextSource->addItem(sourceName);
+            }
+        }
+    }
+
+    obs_log(LOG_INFO, "Finished updating scenes and sources in combo boxes. sourceScene count: %d, targetScene count: %d, targetTextSource count: %d",
+            this->sourceScene->count(), this->targetScene->count(), this->targetTextSource->count());
+    obs_log(LOG_INFO, "targetTextSourceName: '%s', sourceSceneName: '%s', targetSceneName: '%s'",
+            this->targetTextSourceName.toUtf8().constData(), this->sourceSceneName.toUtf8().constData(),
+            this->targetSceneName.toUtf8().constData());
+
+    this->targetTextSource->setCurrentIndex(this->targetTextSource->findText(this->targetTextSourceName));
+    this->sourceScene->setCurrentIndex(this->sourceScene->findText(this->sourceSceneName));
+    this->targetScene->setCurrentIndex(this->targetScene->findText(this->targetSceneName));
 }
 
 void CountdownTimerDock::SceneChangeEvent(enum obs_frontend_event event, void *data)
@@ -266,17 +339,23 @@ void CountdownTimerDock::SceneChangeEvent(enum obs_frontend_event event, void *d
 
         CountdownTimerDock *dock = static_cast<CountdownTimerDock *>(data);
 
-        dock->ClearSceneList();
-        dock->ClearSourceList();
-
-        // Re-enumerate sources so the dock can update its scene list.
-        obs_enum_sources(&CountdownTimerDock::UpdateSource, dock);
-        obs_enum_scenes(&CountdownTimerDock::UpdateScene, dock);
-
-        dock->targetTextSource->setCurrentIndex(dock->targetTextSource->findText(dock->targetTextSourceName));
-        dock->sourceScene->setCurrentIndex(dock->sourceScene->findText(dock->sourceSceneName));
-        dock->targetScene->setCurrentIndex(dock->targetScene->findText(dock->targetSceneName));
+        dock->UpdateScenesAndSources();
     }
+}
+
+void CountdownTimerDock::SaveSettings()
+{
+    obs_log(LOG_INFO, "Saving countdown timer settings");
+
+    this->targetTextSourceName = this->targetTextSource->currentText();
+    this->sourceSceneName = this->sourceScene->currentText();
+    this->targetSceneName = this->targetScene->currentText();
+    this->targetTransitionTime = this->timeEdit->time().toString("hh:mm:ss ap");
+
+    obs_log(LOG_INFO, "targetTextSourceName: '%s', sourceSceneName: '%s', targetSceneName: '%s'",
+            this->targetTextSourceName.toUtf8().constData(),
+            this->sourceSceneName.toUtf8().constData(),
+            this->targetSceneName.toUtf8().constData());
 }
 
 void CountdownTimerDock::SaveCountdownTimer(obs_data_t *save_data, bool saving, void *data)
@@ -285,6 +364,8 @@ void CountdownTimerDock::SaveCountdownTimer(obs_data_t *save_data, bool saving, 
 
     if (saving) {
         obs_log(LOG_INFO, "Saving countdown timer configuration");
+
+        dock->SaveSettings();
 
         OBSDataAutoRelease obj = obs_data_create();
 
@@ -314,14 +395,10 @@ void CountdownTimerDock::SaveCountdownTimer(obs_data_t *save_data, bool saving, 
 
         obs_log(LOG_INFO,
                 "Loaded countdown timer configuration: targetTextSource=%s, sourceScene=%s, targetScene=%s, targetTransitionTime=%s",
-                dock->targetTextSourceName ? dock->targetTextSourceName : "null",
-                dock->sourceSceneName ? dock->sourceSceneName : "null",
-                dock->targetSceneName ? dock->targetSceneName : "null",
-                dock->targetTransitionTime ? dock->targetTransitionTime : "null");
+                dock->targetTextSourceName.toUtf8().constData(), dock->sourceSceneName.toUtf8().constData(),
+                dock->targetSceneName.toUtf8().constData());
 
-        dock->targetTextSource->setCurrentIndex(dock->targetTextSource->findText(dock->targetTextSourceName));
-        dock->sourceScene->setCurrentIndex(dock->sourceScene->findText(dock->sourceSceneName));
-        dock->targetScene->setCurrentIndex(dock->targetScene->findText(dock->targetSceneName));
+        dock->UpdateScenesAndSources();
 
         QTime transitionTime = QTime::fromString(dock->targetTransitionTime, "hh:mm:ss ap");
 
@@ -329,28 +406,4 @@ void CountdownTimerDock::SaveCountdownTimer(obs_data_t *save_data, bool saving, 
             dock->timeEdit->setTime(transitionTime);
         }
     }
-}
-
-bool CountdownTimerDock::UpdateSource(void *param, obs_source_t *source)
-{
-    CountdownTimerDock *dock = static_cast<CountdownTimerDock *>(param);
-    const char *name = obs_source_get_name(source);
-    const char *id = obs_source_get_id(source);
-
-    if (QLatin1StringView(id).contains(QLatin1StringView("text"))) {
-        dock->AddSource(name);
-        obs_log(LOG_INFO, "Added source to targetTextSource combo box: %s", name);
-    } else {
-        obs_log(LOG_INFO, "Skipping source: %s (%s)", name, id);
-    }
-    return true;
-}
-
-bool CountdownTimerDock::UpdateScene(void *param, obs_source_t *source)
-{
-    CountdownTimerDock *dock = static_cast<CountdownTimerDock *>(param);
-    const char *name = obs_source_get_name(source);
-    dock->AddScene(name);
-    obs_log(LOG_INFO, "Added scene to sourceScene and targetScene combo boxes: %s", name);
-    return true;
 }

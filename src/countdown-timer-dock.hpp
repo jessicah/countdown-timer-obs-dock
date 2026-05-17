@@ -29,8 +29,11 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include <QPlainTextEdit>
 #include <QComboBox>
 #include <QTimer>
+#include <QString>
 
 #include <plugin-support.h>
+
+using namespace Qt::StringLiterals;
 
 typedef bool (*SourcesCallback)(void *param, obs_source_t *source);
 
@@ -42,19 +45,14 @@ public:
 
     CountdownTimerDock(QWidget *parent = nullptr);
 
-    void ClearSceneList();
-    void ClearSourceList();
-
-    void AddScene(const char *sceneName);
-    void AddSource(const char *sourceName);
+    void SaveSettings();
 
 private:
     bool IsValidStartTime();
+    void UpdateScenesAndSources();
 
 private:
     static void SceneChangeEvent(enum obs_frontend_event event, void *data);
-    static bool UpdateSource(void *param, obs_source_t *source);
-    static bool UpdateScene(void *param, obs_source_t *source);
 
     static void SaveCountdownTimer(obs_data_t *save_data, bool saving, void *);
 
@@ -81,8 +79,8 @@ private:
     QTimer *tickTimer = nullptr;
     QTimer *validationTimer = nullptr;
 
-    const char *targetTextSourceName = nullptr;
-    const char *sourceSceneName = nullptr;
-    const char *targetSceneName = nullptr;
-    const char *targetTransitionTime = nullptr;
+    QString targetTextSourceName = u""_s;
+    QString sourceSceneName = u""_s;
+    QString targetSceneName = u""_s;
+    QString targetTransitionTime = u"00:00:00 am"_s;
 };
